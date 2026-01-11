@@ -77,6 +77,46 @@ public class SpringDataUserServiceImpl implements SpringDataUserService {
         log.info("SpringDataUserService inicializado");
     }
 
+    /**
+     * EJEMPLO 0: TEST DE CONEXIÓN CON SPRING DATA
+     * ============================================
+     * Demuestra cómo verificar la conexión usando MongoTemplate (Spring Data).
+     *
+     * COMPARACIÓN CON JPA:
+     * ====================
+     * Spring Data MongoDB:
+     * --------------------
+     * mongoTemplate.count(new Query(), User.class);
+     * mongoTemplate.collectionExists(User.class);
+     * mongoTemplate.getCollectionName(User.class);
+     *
+     * Spring Data JPA:
+     * ----------------
+     * entityManager.createQuery("SELECT COUNT(u) FROM User u").getSingleResult();
+     * DatabaseMetaData meta = dataSource.getConnection().getMetaData();
+     * meta.getTables(...);
+     *
+     * VENTAJAS vs API NATIVA:
+     * - No necesitas mongoClient.getDatabase() ni obtener colección manualmente
+     * - mongoTemplate abstrae la complejidad del driver nativo
+     * - Puedes trabajar directamente con clases Java (User.class)
+     * - collectionExists() es más simple que iterar listCollectionNames()
+     *
+     * SIMILITUDES CON JPA:
+     * - MongoTemplate es equivalente a EntityManager/JdbcTemplate
+     * - Ambos permiten queries de bajo nivel cuando los repositories no son suficientes
+     * - Ambos abstraen la conexión a la base de datos
+     *
+     * OPERACIONES DEMOSTRADAS:
+     * 1. Contar documentos: mongoTemplate.count(new Query(), User.class)
+     * 2. Verificar existencia: mongoTemplate.collectionExists(User.class)
+     * 3. Obtener nombre: mongoTemplate.getCollectionName(User.class)
+     *
+     * EQUIVALENCIAS SQL:
+     * - count(new Query(), User.class) → SELECT COUNT(*) FROM users
+     * - collectionExists(User.class) → SHOW TABLES LIKE 'users'
+     * - getCollectionName(User.class) → "users" (por convención o @Document(collection="..."))
+     */
     @Override
     public String testConnection() {
         log.debug("Probando conexión a MongoDB con Spring Data...");
