@@ -4,6 +4,7 @@ import com.dam.accesodatos.exception.DuplicateEmailException;
 import com.dam.accesodatos.exception.UserNotFoundException;
 import com.dam.accesodatos.model.User;
 import com.dam.accesodatos.model.UserCreateDto;
+import com.dam.accesodatos.model.UserQueryDto;
 import com.dam.accesodatos.model.UserUpdateDto;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -11,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
+import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -166,31 +168,171 @@ class SpringDataUserServiceTest {
     }
 
     @Nested
-    @DisplayName("TODO Methods - Pending Implementation")
-    class TodoMethods {
+    @DisplayName("Find All Users")
+    class FindAllUsers {
 
         @Test
-        @DisplayName("findAll debe lanzar UnsupportedOperationException")
-        void findAll_ThrowsUnsupportedOperation() {
-            assertThrows(UnsupportedOperationException.class, () -> service.findAll());
+        @DisplayName("Debe retornar lista vacía cuando no hay usuarios")
+        void findAll_NoUsers_ReturnsEmptyList() {
+            var users = service.findAll();
+            assertThat(users).isNotNull();
         }
 
         @Test
-        @DisplayName("findUsersByDepartment debe lanzar UnsupportedOperationException")
-        void findUsersByDepartment_ThrowsUnsupportedOperation() {
-            assertThrows(UnsupportedOperationException.class, () -> service.findUsersByDepartment("IT"));
+        @DisplayName("Debe retornar todos los usuarios")
+        void findAll_MultipleUsers_ReturnsAllUsers() {
+            service.createUser(new UserCreateDto("Spring User 1", uniqueEmail(), "IT", "Dev"));
+            service.createUser(new UserCreateDto("Spring User 2", uniqueEmail(), "HR", "Manager"));
+
+            var users = service.findAll();
+
+            assertThat(users).isNotNull();
+            assertThat(users.size()).isGreaterThanOrEqualTo(2);
+        }
+    }
+
+    @Nested
+    @DisplayName("Find Users By Department")
+    class FindUsersByDepartment {
+
+        @Test
+        @DisplayName("Debe retornar usuarios del departamento IT")
+        void findUsersByDepartment_IT_ReturnsITUsers() {
+            service.createUser(new UserCreateDto("Spring IT User 1", uniqueEmail(), "IT", "Dev"));
+            service.createUser(new UserCreateDto("Spring IT User 2", uniqueEmail(), "IT", "Senior Dev"));
+            service.createUser(new UserCreateDto("Spring HR User", uniqueEmail(), "HR", "Manager"));
+
+            var itUsers = service.findUsersByDepartment("IT");
+
+            assertThat(itUsers).isNotNull();
+            assertThat(itUsers.size()).isGreaterThanOrEqualTo(2);
+            assertThat(itUsers).allMatch(user -> "IT".equals(user.getDepartment()));
         }
 
         @Test
-        @DisplayName("searchUsers debe lanzar UnsupportedOperationException")
-        void searchUsers_ThrowsUnsupportedOperation() {
-            assertThrows(UnsupportedOperationException.class, () -> service.searchUsers(null));
+        @DisplayName("Debe retornar lista vacía para departamento sin usuarios")
+        void findUsersByDepartment_NonExisting_ReturnsEmpty() {
+            var users = service.findUsersByDepartment("NonExistingDepartment");
+
+            assertThat(users).isNotNull();
+            assertThat(users).isEmpty();
+        }
+    }
+
+    @Nested
+    @DisplayName("Search Users")
+    class SearchUsers {
+
+        @Test
+        @DisplayName("Debe buscar usuarios por nombre parcial")
+        void searchUsers_ByName_ReturnsMatchingUsers() {
+            service.createUser(new UserCreateDto("Alice Johnson", uniqueEmail(), "IT", "Dev"));
+            service.createUser(new UserCreateDto("Alice Smith", uniqueEmail(), "HR", "Manager"));
+            service.createUser(new UserCreateDto("Bob Johnson", uniqueEmail(), "IT", "Senior"));
+
+            UserQueryDto query = new UserQueryDto();
+            query.setName("Alice");
+            query.setSize(10);
+
+            List<User> results = service.searchUsers(query);
+
+            assertThat(results).isNotNull();
+            assertThat(results.size()).isGreaterThanOrEqualTo(2);
+            assertThat(results).allMatch(user -> user.getName().contains("Alice"));
         }
 
         @Test
-        @DisplayName("countByDepartment debe lanzar UnsupportedOperationException")
-        void countByDepartment_ThrowsUnsupportedOperation() {
-            assertThrows(UnsupportedOperationException.class, () -> service.countByDepartment("IT"));
+        @DisplayName("Debe buscar usuarios por departamento")
+        void searchUsers_ByDepartment_ReturnsMatchingUsers() {
+            service.createUser(new UserCreateDto("Spring User 1", uniqueEmail(), "IT", "Dev"));
+            service.createUser(new UserCreateDto("Spring User 2", uniqueEmail(), "IT", "Senior"));
+            service.createUser(new UserCreateDto("Spring User 3", uniqueEmail(), "HR", "Manager"));
+
+            UserQueryDto query = new UserQueryDto();
+            query.setDepartment("IT");
+
+            List<User> results = service.searchUsers(query);
+
+            assertThat(results).isNotNull();
+            assertThat(results.size()).isGreaterThanOrEqualTo(2);
+            assertThat(results).allMatch(user -> "IT".equals(user.getDepartment()));
+        }
+
+        @Test
+        @DisplayName("Debe buscar usuarios activos")
+        void searchUsers_ByActive_ReturnsActiveUsers() {
+            service.createUser(new UserCreateDto("Active Spring User", uniqueEmail(), "IT", "Dev"));
+
+            UserQueryDto query = new UserQueryDto();
+            query.setActive(true);
+
+            List<User> results = service.searchUsers(query);
+
+            assertThat(results).isNotNull();
+            assertThat(results).allMatch(User::getActive);
+        }
+
+        @Test
+        @DisplayName("Debe aplicar paginación")
+        void searchUsers_WithPagination_ReturnsPagedResults() {
+            for (int i = 0; i < 5; i++) {
+                service.createUser(new UserCreateDto("Paginated User " + i, uniqueEmail(), "IT", "Dev"));
+            }
+
+            UserQueryDto query = new UserQueryDto();
+            query.setPage(0);
+            query.setSize(3);
+
+            List<User> results = service.searchUsers(query);
+
+            assertThat(results).isNotNull();
+            assertThat(results.size()).isLessThanOrEqualTo(3);
+        }
+
+        @Test
+        @DisplayName("Debe combinar múltiples filtros")
+        void searchUsers_MultipleFilters_ReturnsMatchingUsers() {
+            service.createUser(new UserCreateDto("Spring IT Dev 1", uniqueEmail(), "IT", "Dev"));
+            service.createUser(new UserCreateDto("Spring IT Dev 2", uniqueEmail(), "IT", "Senior"));
+            service.createUser(new UserCreateDto("Spring HR Manager", uniqueEmail(), "HR", "Manager"));
+
+            UserQueryDto query = new UserQueryDto();
+            query.setName("Spring IT");
+            query.setDepartment("IT");
+            query.setActive(true);
+
+            List<User> results = service.searchUsers(query);
+
+            assertThat(results).isNotNull();
+            assertThat(results).allMatch(user -> 
+                user.getName().contains("Spring IT") && 
+                "IT".equals(user.getDepartment()) && 
+                user.getActive()
+            );
+        }
+    }
+
+    @Nested
+    @DisplayName("Count By Department")
+    class CountByDepartment {
+
+        @Test
+        @DisplayName("Debe contar usuarios del departamento IT")
+        void countByDepartment_IT_ReturnsCount() {
+            service.createUser(new UserCreateDto("Spring IT User 1", uniqueEmail(), "IT", "Dev"));
+            service.createUser(new UserCreateDto("Spring IT User 2", uniqueEmail(), "IT", "Senior"));
+
+            long count = service.countByDepartment("IT");
+
+            assertThat(count).isGreaterThanOrEqualTo(2);
+        }
+
+        @Test
+        @DisplayName("Debe retornar 0 para departamento sin usuarios")
+        void countByDepartment_NonExisting_ReturnsZero() {
+            long count = service.countByDepartment("NonExistingDepartment");
+
+            assertThat(count).isEqualTo(0);
         }
     }
 }
