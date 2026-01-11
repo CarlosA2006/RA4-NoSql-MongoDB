@@ -1,0 +1,535 @@
+---
+marp: true
+theme: default
+paginate: true
+backgroundColor: #fff
+color: #333
+header: 'API Nativa de MongoDB'
+footer: 'Semana 3 - Acceso a Datos'
+---
+
+<!-- _class: lead -->
+<!-- _paginate: false -->
+
+# API Nativa de MongoDB
+
+## Driver Java y Operaciones Directas
+
+### Semana 3 - Acceso a Datos
+
+---
+
+## ¿Por Qué Aprender la API Nativa?
+
+### Si Spring Data es Tan Fácil, ¿Por Qué Esto?
+
+- 🔍 **Comprensión profunda:** Entender qué hace Spring Data internamente
+- 🛠️ **Control total:** Operaciones que Spring Data no soporta fácilmente
+- 🐛 **Debugging:** Saber qué buscar cuando algo falla
+- ⚡ **Optimización:** Ajustes finos de rendimiento
+- 🌍 **Portabilidad:** Mismo conocimiento aplica a otros lenguajes
+- 📚 **Fundamentos:** Base para entender cualquier ODM/ORM
+
+> Es como aprender a conducir con cambio manual antes del automático.
+
+---
+
+## Arquitectura del Driver
+
+### Componentes del Driver MongoDB Java
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                      MongoClient                        │
+│            Conexión a la instancia MongoDB              │
+└───────────────────────────┬─────────────────────────────┘
+                            │ getDatabase("nombre")
+                            ▼
+┌─────────────────────────────────────────────────────────┐
+│                     MongoDatabase                       │
+│              Base de datos específica                   │
+└───────────────────────────┬─────────────────────────────┘
+                            │ getCollection("users")
+                            ▼
+┌─────────────────────────────────────────────────────────┐
+│              MongoCollection<Document>                  │
+│         Colección de documentos (≈ tabla SQL)           │
+└───────────────────────────┬─────────────────────────────┘
+                            │ find(), insertOne(), etc.
+                            ▼
+┌─────────────────────────────────────────────────────────┐
+│                      Document                           │
+│           Documento BSON (≈ fila SQL)                   │
+└─────────────────────────────────────────────────────────┘
+```
+
+---
+
+## MongoClient
+
+### La Conexión
+
+```java
+// Crear conexión (normalmente una por aplicación)
+MongoClient mongoClient = MongoClients.create(
+    "mongodb://localhost:27017"
+);
+
+// Con autenticación
+MongoClient mongoClient = MongoClients.create(
+    "mongodb://usuario:password@localhost:27017/mydb"
+);
+
+// En nuestro proyecto: Spring lo configura automáticamente
+@Autowired
+private MongoClient mongoClient;
+```
+
+### Importante:
+- ⚠️ MongoClient es thread-safe
+- ⚠️ Crear solo **UNO** por aplicación
+- ⚠️ Reutilizar, no crear y cerrar constantemente
+
+---
+
+## MongoDatabase y MongoCollection
+
+```java
+// 1. Obtener la base de datos
+MongoDatabase database = mongoClient.getDatabase("accesodatos");
+
+// 2. Obtener la colección
+MongoCollection<Document> collection =
+    database.getCollection("users");
+
+// 3. Ahora podemos operar
+long count = collection.countDocuments();
+```
+
+### En nuestro proyecto:
+```java
+// Ya tenemos un método helper
+private MongoCollection<Document> getCollection() {
+    return mongoClient
+        .getDatabase(databaseName)
+        .getCollection("users");
+}
+```
+
+---
+
+## La Clase Document
+
+### Representando BSON en Java
+
+```java
+// Crear un documento vacío
+Document doc = new Document();
+
+// Crear con datos (builder pattern)
+Document doc = new Document()
+    .append("name", "Ana García")
+    .append("email", "ana@empresa.com")
+    .append("department", "IT")
+    .append("active", true)
+    .append("age", 28);
+
+// Crear desde mapa
+Document doc = new Document(Map.of(
+    "name", "Ana",
+    "email", "ana@test.com"
+));
+```
+
+> Document es similar a un `Map<String, Object>`
+
+---
+
+## Leer Datos de un Document
+
+| Método | Tipo Retorno | Ejemplo |
+|--------|--------------|---------|
+| `getString("campo")` | String | `doc.getString("name")` |
+| `getInteger("campo")` | Integer | `doc.getInteger("age")` |
+| `getBoolean("campo")` | Boolean | `doc.getBoolean("active")` |
+| `getDouble("campo")` | Double | `doc.getDouble("salary")` |
+| `getDate("campo")` | Date | `doc.getDate("createdAt")` |
+| `getObjectId("campo")` | ObjectId | `doc.getObjectId("_id")` |
+| `get("campo")` | Object | `doc.get("cualquierCosa")` |
+
+### Con valor por defecto:
+```java
+// Si "active" no existe, devuelve false
+boolean active = doc.getBoolean("active", false);
+```
+
+---
+
+## Clase Filters
+
+### Construyendo Consultas
+
+```java
+import static com.mongodb.client.model.Filters.*;
+```
+
+> La clase `Filters` proporciona métodos estáticos para crear condiciones de búsqueda de forma segura y legible.
+
+### Analogía:
+
+```
+SQL:             WHERE department = 'IT'
+
+MongoDB Shell:   { "department": "IT" }
+
+Java Driver:     Filters.eq("department", "IT")
+```
+
+---
+
+## Filtros de Igualdad
+
+```java
+// Igualdad
+Bson f1 = Filters.eq("department", "IT");
+// → { "department": "IT" }
+
+// Desigualdad
+Bson f2 = Filters.ne("status", "deleted");
+// → { "status": { "$ne": "deleted" } }
+
+// Mayor que
+Bson f3 = Filters.gt("age", 25);
+// → { "age": { "$gt": 25 } }
+
+// Mayor o igual
+Bson f4 = Filters.gte("salary", 30000);
+
+// Menor que / menor o igual
+Bson f5 = Filters.lt("age", 60);
+Bson f6 = Filters.lte("priority", 5);
+```
+
+---
+
+## Filtros de Conjunto
+
+### IN - Dentro de una lista:
+```java
+Bson filter = Filters.in("department", "IT", "HR", "Finance");
+// → { "department": { "$in": ["IT", "HR", "Finance"] } }
+
+// Con lista Java
+List<String> depts = Arrays.asList("IT", "HR");
+Bson filter = Filters.in("department", depts);
+```
+
+### NIN - NO en la lista:
+```java
+Bson filter = Filters.nin("status", "deleted", "archived");
+// → { "status": { "$nin": ["deleted", "archived"] } }
+```
+
+---
+
+## Combinando Filtros
+
+### AND - Todas las condiciones:
+```java
+Bson filter = Filters.and(
+    Filters.eq("department", "IT"),
+    Filters.eq("active", true),
+    Filters.gt("age", 25)
+);
+// → { "$and": [{...}, {...}, {...}] }
+```
+
+### OR - Cualquier condición:
+```java
+Bson filter = Filters.or(
+    Filters.eq("department", "IT"),
+    Filters.eq("department", "HR")
+);
+// → { "$or": [{...}, {...}] }
+```
+
+---
+
+## Filtro Regex
+
+### Búsqueda con Expresiones Regulares
+
+```java
+// Buscar nombres que contengan "garcía" (case insensitive)
+Bson filter = Filters.regex("name", "garcía", "i");
+// → { "name": { "$regex": "garcía", "$options": "i" } }
+
+// Buscar emails que terminen en "@empresa.com"
+Bson filter = Filters.regex("email", "@empresa\\.com$");
+
+// Buscar nombres que empiecen por "A"
+Bson filter = Filters.regex("name", "^A");
+```
+
+### Opciones comunes:
+- `"i"` = case insensitive
+- `"m"` = multilínea
+- `"s"` = permite . para coincidir con newline
+
+---
+
+## Ejecutando Consultas - find()
+
+```java
+MongoCollection<Document> collection = getCollection();
+
+// find() sin filtro → todos los documentos
+FindIterable<Document> todos = collection.find();
+
+// find() con filtro
+Bson filter = Filters.eq("department", "IT");
+FindIterable<Document> filtrados = collection.find(filter);
+
+// Obtener solo el primero
+Document primero = collection.find(filter).first();
+
+// Iterar resultados
+for (Document doc : collection.find(filter)) {
+    System.out.println(doc.getString("name"));
+}
+```
+
+**Importante:** `find()` devuelve `FindIterable`, no una lista directa
+
+---
+
+## FindIterable - Más Operaciones
+
+### Encadenando Operaciones
+
+```java
+FindIterable<Document> results = collection.find(filter)
+    .sort(Sorts.ascending("name"))     // Ordenar
+    .skip(10)                          // Saltar 10 primeros
+    .limit(5)                          // Máximo 5 resultados
+    .projection(Projections.include("name", "email"));
+
+// Convertir a lista
+List<Document> lista = new ArrayList<>();
+results.into(lista);
+
+// O más compacto
+List<Document> lista = collection.find(filter)
+    .into(new ArrayList<>());
+```
+
+---
+
+## Mapeo Manual
+
+### De Document a Objeto Java
+
+```java
+private User mapDocumentToUser(Document doc) {
+    User user = new User();
+
+    // Campos simples
+    user.setId(doc.getObjectId("_id").toString());
+    user.setName(doc.getString("name"));
+    user.setEmail(doc.getString("email"));
+    user.setDepartment(doc.getString("department"));
+    user.setRole(doc.getString("role"));
+
+    // Boolean con valor por defecto
+    user.setActive(doc.getBoolean("active", false));
+
+    // Fecha (requiere conversión)
+    Date createdAt = doc.getDate("createdAt");
+    if (createdAt != null) {
+        user.setCreatedAt(createdAt.toInstant()
+            .atZone(ZoneId.systemDefault())
+            .toLocalDateTime());
+    }
+
+    return user;
+}
+```
+
+---
+
+## Comparación Side by Side
+
+### findByDepartment: Spring Data vs API Nativa
+
+**Spring Data:**
+```java
+public List<User> findByDepartment(String dept) {
+    return userRepository.findByDepartment(dept);
+}
+```
+**1 línea**
+
+**API Nativa:**
+```java
+public List<User> findByDepartment(String dept) {
+    MongoCollection<Document> col = getCollection();
+    List<User> users = new ArrayList<>();
+    Bson filter = Filters.eq("department", dept);
+
+    for (Document doc : col.find(filter)) {
+        users.add(mapDocumentToUser(doc));
+    }
+    return users;
+}
+```
+**8+ líneas**
+
+---
+
+## countDocuments
+
+### Contando Documentos
+
+```java
+// Sin filtro - total de documentos
+long total = collection.countDocuments();
+
+// Con filtro
+Bson filter = Filters.eq("department", "IT");
+long countIT = collection.countDocuments(filter);
+```
+
+### ¿Por qué no `find().size()`?
+
+- ❌ `find(filter).into(list).size()` → Carga TODOS los documentos
+- ✅ `countDocuments(filter)` → Solo cuenta en el servidor
+
+### Rendimiento:
+- 1 millón de documentos:
+  - `into().size()` → Segundos/minutos, mucha memoria
+  - `countDocuments()` → Milisegundos, sin memoria
+
+---
+
+## Los TODOs de Hoy
+
+| Método | Patrón |
+|--------|--------|
+| `findAll()` | `collection.find()` + iterar + mapear |
+| `findByDepartment()` | `Filters.eq()` + find + iterar + mapear |
+| `countByDepartment()` | `Filters.eq()` + `countDocuments()` |
+
+### Estructura común:
+```java
+public List<User> findXxx(...) {
+    MongoCollection<Document> collection = getCollection();
+    List<User> users = new ArrayList<>();
+
+    // 1. Crear filtro (si aplica)
+    // 2. Ejecutar find()
+    // 3. Iterar y mapear
+
+    for (Document doc : collection.find(filtro)) {
+        users.add(mapDocumentToUser(doc));
+    }
+    return users;
+}
+```
+
+---
+
+## Imports Necesarios
+
+```java
+// Driver MongoDB
+import com.mongodb.client.MongoCollection;
+import com.mongodb.client.MongoClient;
+import com.mongodb.client.FindIterable;
+
+// Filtros y tipos
+import com.mongodb.client.model.Filters;
+import org.bson.Document;
+import org.bson.conversions.Bson;
+import org.bson.types.ObjectId;
+
+// Java estándar
+import java.util.ArrayList;
+import java.util.List;
+```
+
+**Tip del IDE:**
+- IntelliJ: `Alt + Enter` para importar automáticamente
+- VS Code: `Ctrl + .` para sugerencias
+
+---
+
+## Errores Comunes
+
+### ⚠️ ClassCastException al leer:
+```java
+// ❌ Error si el campo es Integer
+String value = doc.getString("age");
+
+// ✅ Usar el tipo correcto
+Integer value = doc.getInteger("age");
+```
+
+### ⚠️ NullPointerException en ObjectId:
+```java
+// ❌ Si _id no existe, falla
+String id = doc.getObjectId("_id").toString();
+
+// ✅ Verificar primero
+ObjectId oid = doc.getObjectId("_id");
+String id = (oid != null) ? oid.toString() : null;
+```
+
+---
+
+## Resumen
+
+### Conceptos Clave
+
+**MongoCollection<Document>**
+Representa una colección, permite CRUD
+
+**Document**
+Documento BSON, similar a `Map<String, Object>`
+
+**Filters**
+Clase helper para crear condiciones de búsqueda
+`eq()`, `and()`, `or()`, `regex()`, `gt()`, `lt()`...
+
+**Mapeo Manual**
+Convertir Document ↔ Objeto Java campo a campo
+
+---
+
+<!-- _class: lead -->
+
+# ¡A Practicar!
+
+## Pasos:
+1. Abrir `NativeMongoUserServiceImpl.java`
+2. Localizar los métodos TODO
+3. Usar el patrón: colección → filtro → find → mapear
+4. Ejecutar tests: `./gradlew test --tests "*Native*"`
+5. Comparar tu código con la versión Spring Data
+
+**Tiempo:** 1.5 horas
+
+**Recuerda:**
+- `getCollection()` ya existe
+- `mapDocumentToUser()` ya existe
+- Solo tienes que crear el filtro y el bucle
+
+---
+
+<!-- _class: lead -->
+<!-- _paginate: false -->
+
+# ¿Preguntas?
+
+## 🍃
+
+> "Entender la base te hace mejor en cualquier nivel de abstracción"

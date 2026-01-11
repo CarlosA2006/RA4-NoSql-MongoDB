@@ -1,0 +1,27 @@
+spring:
+  application:
+    name: proyecto-pedagogico-mongodb
+  
+  data:
+    mongodb:
+      host: localhost
+      port: 27017
+      database: pedagogico_db
+      auto-index-creation: true
+
+de:
+  flapdoodle:
+    mongodb:
+      embedded:
+        version: 7.0.2
+
+server:
+  port: 8083
+
+logging:
+  level:
+    root: INFO
+    com.dam.accesodatos: DEBUG
+    org.springframework.data.mongodb: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
