@@ -165,28 +165,6 @@ curl -X POST http://localhost:8083/api/native/users \
 
 **Objetivo**: Listar todos los usuarios de la colección
 
-**Instrucciones paso a paso**:
-1. Obtener colección con `getCollection()`
-2. Ejecutar `find()` sin filtros
-3. Iterar con `MongoCursor<Document>` o usar `.into(new ArrayList<>())`
-4. Mapear cada `Document` a `User` usando `mapDocumentToUser()`
-5. Retornar lista de usuarios
-
-**Ejemplo de estructura**:
-```java
-public List<User> findAll() {
-    MongoCollection<Document> collection = getCollection();
-    List<User> users = new ArrayList<>();
-    
-    FindIterable<Document> documents = collection.find();
-    for (Document doc : documents) {
-        users.add(mapDocumentToUser(doc));
-    }
-    
-    return users;
-}
-```
-
 **Equivalente SQL**: `SELECT * FROM users`
 
 ---
@@ -194,11 +172,6 @@ public List<User> findAll() {
 #### TODO 2: findUsersByDepartment() - Dificultad ⭐⭐ Media
 
 **Objetivo**: Buscar usuarios de un departamento específico
-
-**Instrucciones paso a paso**:
-1. Crear filtro: `Filters.eq("department", department)`
-2. Ejecutar `find(filtro)`
-3. Iterar resultados y mapear a lista de Users
 
 **Clases requeridas**:
 - `Filters.eq()`
@@ -211,16 +184,6 @@ public List<User> findAll() {
 #### TODO 3: searchUsers() - Dificultad ⭐⭐⭐ Alta
 
 **Objetivo**: Búsqueda avanzada con filtros múltiples y paginación
-
-**Instrucciones paso a paso**:
-1. Construir filtros dinámicos según `UserQueryDto`:
-   - Si `name != null`: `Filters.regex("name", Pattern.quote(name), "i")`
-   - Si `department != null`: `Filters.eq("department", department)`
-   - Si `active != null`: `Filters.eq("active", active)`
-2. Combinar filtros con `Filters.and(filtro1, filtro2, ...)`
-3. Aplicar paginación: `.skip(query.getOffset()).limit(query.getSize())`
-4. Aplicar ordenamiento: `.sort(Sorts.ascending("name"))`
-5. Iterar y mapear resultados
 
 **Clases requeridas**:
 - `Filters.and()`, `Filters.regex()`, `Filters.eq()`
@@ -240,14 +203,6 @@ LIMIT 10 OFFSET 0
 #### TODO 4: countByDepartment() - Dificultad ⭐⭐⭐ Alta
 
 **Objetivo**: Contar usuarios por departamento usando Aggregation Pipeline
-
-**Instrucciones paso a paso**:
-1. Crear pipeline de agregación:
-   - Stage 1: `Aggregates.match(Filters.eq("department", department))`
-   - Stage 2: `Aggregates.count("total")`
-2. Ejecutar: `collection.aggregate(Arrays.asList(matchStage, countStage))`
-3. Obtener primer resultado con `.first()`
-4. Extraer valor: `result.getInteger("total", 0)`
 
 **Clases requeridas**:
 - `Aggregates.match()`, `Aggregates.count()`
@@ -325,26 +280,11 @@ LIMIT 10 OFFSET 0
 
 #### TODO 1: findAll() - Dificultad ⭐ Básica
 
-**Instrucciones**:
-```java
-public List<User> findAll() {
-    return userRepository.findAll();  // ¡Una sola línea!
-}
-```
-
 **Nota pedagógica**: Compara con la complejidad de la API nativa.
 
 ---
 
 #### TODO 2: findUsersByDepartment() - Dificultad ⭐ Básica
-
-**Instrucciones**:
-1. En `UserRepository.java`, agregar método:
-   ```java
-   List<User> findByDepartment(String department);
-   ```
-2. Spring Data genera la implementación automáticamente
-3. En el servicio, llamar: `return userRepository.findByDepartment(department);`
 
 **Nota pedagógica**: Spring Data deriva la query del nombre del método:
 - `findBy` + `Department` = consulta por campo "department"
@@ -355,23 +295,6 @@ public List<User> findAll() {
 
 **Objetivo**: Búsqueda compleja con MongoTemplate y Criteria
 
-**Instrucciones paso a paso**:
-1. Crear `Query query = new Query()`
-2. Construir `List<Criteria> criteria = new ArrayList<>()`
-3. Agregar criterios dinámicamente:
-   ```java
-   if (queryDto.getName() != null) {
-       criteria.add(Criteria.where("name").regex(queryDto.getName(), "i"));
-   }
-   if (queryDto.getDepartment() != null) {
-       criteria.add(Criteria.where("department").is(queryDto.getDepartment()));
-   }
-   ```
-4. Combinar criterios: `query.addCriteria(new Criteria().andOperator(criteria.toArray(new Criteria[0])))`
-5. Paginación: `query.skip(queryDto.getOffset()).limit(queryDto.getSize())`
-6. Ordenamiento: `query.with(Sort.by(Sort.Direction.ASC, "name"))`
-7. Ejecutar: `return mongoTemplate.find(query, User.class)`
-
 **Clases requeridas**:
 - `Query`, `Criteria`
 - `MongoTemplate.find()`
@@ -381,16 +304,9 @@ public List<User> findAll() {
 
 #### TODO 4: countByDepartment() - Dificultad ⭐⭐ Media
 
-**Opción A (Query Method - más fácil)**:
-1. En `UserRepository.java` agregar: `long countByDepartment(String department);`
-2. Llamar desde el servicio
+**Opción A (Query Method - más fácil)**
 
-**Opción B (Aggregation - más educativo)**:
-1. Crear `MatchOperation match = Aggregation.match(Criteria.where("department").is(department))`
-2. Crear `CountOperation count = Aggregation.count().as("total")`
-3. Crear `Aggregation aggregation = Aggregation.newAggregation(match, count)`
-4. Ejecutar: `AggregationResults<Document> results = mongoTemplate.aggregate(aggregation, "users", Document.class)`
-5. Obtener resultado: `results.getUniqueMappedResult().getInteger("total")`
+**Opción B (Aggregation - más educativo)**
 
 **Recomendación pedagógica**: Implementa ambas opciones para comparar.
 
