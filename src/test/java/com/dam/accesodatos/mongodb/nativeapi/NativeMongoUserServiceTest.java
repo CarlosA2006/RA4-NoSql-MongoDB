@@ -9,10 +9,15 @@ import com.dam.accesodatos.model.UserCreateDto;
 import com.dam.accesodatos.model.UserQueryDto;
 import com.dam.accesodatos.model.UserUpdateDto;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.index.Index;
 
 import java.util.List;
 import java.util.UUID;
@@ -27,6 +32,14 @@ class NativeMongoUserServiceTest {
 
     @Autowired
     private NativeMongoUserService service;
+
+    @Autowired
+    private MongoTemplate mongoTemplate;
+
+    @BeforeEach
+    void setUp() {
+        mongoTemplate.indexOps(User.class).ensureIndex(new Index().on("email", Sort.Direction.ASC).unique());
+    }
 
     private String uniqueEmail() {
         return "test-" + UUID.randomUUID().toString().substring(0, 8) + "@test.com";
@@ -68,7 +81,6 @@ class NativeMongoUserServiceTest {
 
         @Test
         @DisplayName("Debe lanzar DuplicateEmailException con email duplicado")
-        @org.junit.jupiter.api.Disabled("Requiere índice único en MongoDB - funciona en producción pero no en MongoDB embebido sin configuración adicional")
         void createUser_DuplicateEmail_ThrowsException() {
             String duplicateEmail = uniqueEmail();
             UserCreateDto dto1 = new UserCreateDto("User 1", duplicateEmail, "IT", "Dev");
@@ -274,11 +286,9 @@ class NativeMongoUserServiceTest {
             List<User> results = service.searchUsers(query);
 
             assertThat(results).isNotNull();
-            assertThat(results).allMatch(user -> 
-                user.getName().contains("IT") && 
-                "IT".equals(user.getDepartment()) && 
-                user.getActive()
-            );
+            assertThat(results).allMatch(user -> user.getName().contains("IT") &&
+                    "IT".equals(user.getDepartment()) &&
+                    user.getActive());
         }
     }
 
@@ -297,11 +307,9 @@ class NativeMongoUserServiceTest {
 
             assertThat(stats).isNotNull();
             assertThat(stats).isNotEmpty();
-            assertThat(stats).allMatch(stat -> 
-                stat.getDepartment() != null &&
-                stat.getTotalUsers() > 0 &&
-                stat.getActiveUsers() >= 0
-            );
+            assertThat(stats).allMatch(stat -> stat.getDepartment() != null &&
+                    stat.getTotalUsers() > 0 &&
+                    stat.getActiveUsers() >= 0);
         }
 
         @Test
@@ -314,8 +322,7 @@ class NativeMongoUserServiceTest {
                 assertThat(stat.getTotalUsers()).isGreaterThan(0);
                 assertThat(stat.getActiveUsers()).isLessThanOrEqualTo(stat.getTotalUsers());
                 assertThat(stat.getInactiveUsers()).isEqualTo(
-                    stat.getTotalUsers() - stat.getActiveUsers()
-                );
+                        stat.getTotalUsers() - stat.getActiveUsers());
             }
         }
     }

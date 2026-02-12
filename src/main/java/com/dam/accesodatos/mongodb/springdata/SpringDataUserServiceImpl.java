@@ -9,6 +9,8 @@ import com.dam.accesodatos.model.UserUpdateDto;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
@@ -26,13 +28,14 @@ import java.util.List;
  *
  * COMPARACIÓN CON SPRING DATA JPA:
  * ================================
- * Spring Data MongoDB                      | Spring Data JPA
- * ---------------------------------------- | ---------------------------------------
- * MongoRepository<User, String>            | JpaRepository<User, Long>
- * MongoTemplate                            | EntityManager / JdbcTemplate
- * Criteria API                             | Criteria API / JPQL
- * Query query = new Query()                | CriteriaQuery query = cb.createQuery()
- * mongoTemplate.find(query, User.class)    | entityManager.createQuery(jpql)
+ * Spring Data MongoDB | Spring Data JPA
+ * ---------------------------------------- |
+ * ---------------------------------------
+ * MongoRepository<User, String> | JpaRepository<User, Long>
+ * MongoTemplate | EntityManager / JdbcTemplate
+ * Criteria API | Criteria API / JPQL
+ * Query query = new Query() | CriteriaQuery query = cb.createQuery()
+ * mongoTemplate.find(query, User.class) | entityManager.createQuery(jpql)
  *
  * VENTAJAS SPRING DATA (vs API Nativa):
  * - Reduce código boilerplate en un 90%
@@ -64,8 +67,8 @@ public class SpringDataUserServiceImpl implements SpringDataUserService {
      * mongoTemplate: Para queries complejas y dinámicas (Criteria API)
      *
      * Equivalente JPA:
-     * private final UserRepository userRepository;  // JpaRepository
-     * private final EntityManager entityManager;     // Para queries JPQL complejas
+     * private final UserRepository userRepository; // JpaRepository
+     * private final EntityManager entityManager; // Para queries JPQL complejas
      */
     private final UserRepository userRepository;
     private final MongoTemplate mongoTemplate;
@@ -104,7 +107,8 @@ public class SpringDataUserServiceImpl implements SpringDataUserService {
      *
      * SIMILITUDES CON JPA:
      * - MongoTemplate es equivalente a EntityManager/JdbcTemplate
-     * - Ambos permiten queries de bajo nivel cuando los repositories no son suficientes
+     * - Ambos permiten queries de bajo nivel cuando los repositories no son
+     * suficientes
      * - Ambos abstraen la conexión a la base de datos
      *
      * OPERACIONES DEMOSTRADAS:
@@ -115,7 +119,8 @@ public class SpringDataUserServiceImpl implements SpringDataUserService {
      * EQUIVALENCIAS SQL:
      * - count(new Query(), User.class) → SELECT COUNT(*) FROM users
      * - collectionExists(User.class) → SHOW TABLES LIKE 'users'
-     * - getCollectionName(User.class) → "users" (por convención o @Document(collection="..."))
+     * - getCollectionName(User.class) → "users" (por convención
+     * o @Document(collection="..."))
      */
     @Override
     public String testConnection() {
@@ -178,7 +183,7 @@ public class SpringDataUserServiceImpl implements SpringDataUserService {
             // save() inserta el documento y retorna el User con ID generado
             User savedUser = userRepository.save(user);
             // En JPA sería idéntico: entityManager.persist(user) o repository.save(user)
-            
+
             log.info("Usuario creado exitosamente con ID: {}", savedUser.getId());
             return savedUser;
         } catch (Exception e) {
@@ -247,18 +252,19 @@ public class SpringDataUserServiceImpl implements SpringDataUserService {
      * --------------------
      * User user = userRepository.findById(id).orElseThrow();
      * user.setName("Nuevo nombre");
-     * userRepository.save(user);  // Spring detecta que es UPDATE
+     * userRepository.save(user); // Spring detecta que es UPDATE
      *
      * Spring Data JPA:
      * ----------------
      * User user = userRepository.findById(id).orElseThrow();
      * user.setName("Nuevo nombre");
-     * userRepository.save(user);  // Hibernate detecta dirty checking y hace UPDATE
+     * userRepository.save(user); // Hibernate detecta dirty checking y hace UPDATE
      *
      * VENTAJAS vs API NATIVA:
      * - No necesitas construir Updates.set() manualmente
      * - No necesitas updateOne() con filtros
-     * - save() detecta automáticamente si es INSERT (id null) o UPDATE (id presente)
+     * - save() detecta automáticamente si es INSERT (id null) o UPDATE (id
+     * presente)
      * - Código más limpio y orientado a objetos
      *
      * SIMILITUDES CON JPA:
@@ -267,8 +273,10 @@ public class SpringDataUserServiceImpl implements SpringDataUserService {
      * - @LastModifiedDate se actualiza automáticamente
      *
      * DIFERENCIA CON JPA:
-     * - JPA con Hibernate hace dirty checking en memoria (solo actualiza campos modificados)
-     * - MongoDB actualiza el documento completo (o necesitas @Field con Updates.set manual)
+     * - JPA con Hibernate hace dirty checking en memoria (solo actualiza campos
+     * modificados)
+     * - MongoDB actualiza el documento completo (o necesitas @Field con Updates.set
+     * manual)
      */
     @Override
     public User updateUser(String id, UserUpdateDto dto) {
@@ -283,20 +291,22 @@ public class SpringDataUserServiceImpl implements SpringDataUserService {
             // En JPA sería idéntico: userRepository.findById(id).orElseThrow()
 
             // 2. Modificar campos (modify)
-            dto.applyTo(user);  // Aplica solo los campos no-null del DTO
+            dto.applyTo(user); // Aplica solo los campos no-null del DTO
             user.setUpdatedAt(LocalDateTime.now());
 
-            // 3. Guardar cambios (save) - Spring Data detecta que es UPDATE por el ID presente
+            // 3. Guardar cambios (save) - Spring Data detecta que es UPDATE por el ID
+            // presente
             User updatedUser = userRepository.save(user);
             // En JPA: Hibernate detecta dirty state y ejecuta UPDATE automáticamente
             // En MongoDB: save() reemplaza el documento completo
-            
+
             log.info("Usuario actualizado exitosamente: {}", id);
             return updatedUser;
         } catch (UserNotFoundException e) {
             throw e;
         } catch (Exception e) {
-            if (e.getMessage() != null && (e.getMessage().contains("duplicate key") || e.getMessage().contains("E11000"))) {
+            if (e.getMessage() != null
+                    && (e.getMessage().contains("duplicate key") || e.getMessage().contains("E11000"))) {
                 log.warn("Intento de actualizar con email duplicado: {}", dto.getEmail());
                 throw new DuplicateEmailException(dto.getEmail());
             }
@@ -315,16 +325,16 @@ public class SpringDataUserServiceImpl implements SpringDataUserService {
      * Spring Data MongoDB:
      * --------------------
      * if (userRepository.existsById(id)) {
-     *     userRepository.deleteById(id);
-     *     return true;
+     * userRepository.deleteById(id);
+     * return true;
      * }
      * return false;
      *
      * Spring Data JPA:
      * ----------------
      * if (userRepository.existsById(id)) {
-     *     userRepository.deleteById(id);
-     *     return true;
+     * userRepository.deleteById(id);
+     * return true;
      * }
      * return false;
      *
@@ -344,7 +354,7 @@ public class SpringDataUserServiceImpl implements SpringDataUserService {
      * DELETE FROM users WHERE id = ?
      *
      * ALTERNATIVA (sin verificación previa):
-     * userRepository.deleteById(id);  // Lanza excepción si no existe
+     * userRepository.deleteById(id); // Lanza excepción si no existe
      */
     @Override
     public boolean deleteUser(String id) {
@@ -360,40 +370,46 @@ public class SpringDataUserServiceImpl implements SpringDataUserService {
 
     @Override
     public List<User> findAll() {
-        // TODO: Implementar findAll() - Los estudiantes deben completar este método
-        // PISTAS:
-        // 1. Usar userRepository.findAll()
-        // 2. Es una sola línea de código
-        throw new UnsupportedOperationException("TODO: Implementar findAll() - Los estudiantes deben completar este método");
+        return userRepository.findAll();
     }
 
     @Override
     public List<User> findUsersByDepartment(String department) {
-        // TODO: Implementar findUsersByDepartment() - Los estudiantes deben completar este método
-        // PISTAS:
-        // 1. Usar userRepository.findByDepartment(department)
-        // 2. El método ya está definido en UserRepository
-        throw new UnsupportedOperationException("TODO: Implementar findUsersByDepartment() - Los estudiantes deben completar este método");
+        return userRepository.findByDepartment(department);
     }
 
     @Override
     public List<User> searchUsers(UserQueryDto query) {
-        // TODO: Implementar searchUsers() - Los estudiantes deben completar este método
-        // PISTAS:
-        // 1. Usar mongoTemplate con Query y Criteria
-        // 2. Construir criterios dinámicos: Criteria.where("campo").is(valor)
-        // 3. Para búsqueda parcial: Criteria.where("name").regex(query.getName(), "i")
-        // 4. Aplicar paginación con query.skip() y query.limit()
-        // 5. Aplicar ordenamiento con query.with(Sort.by(...))
-        throw new UnsupportedOperationException("TODO: Implementar searchUsers() - Los estudiantes deben completar este método");
+        Query q = new Query();
+
+        // 1. Filtros dinámicos
+        if (query.getName() != null && !query.getName().isEmpty()) {
+            q.addCriteria(Criteria.where("name").regex(query.getName(), "i"));
+        }
+        if (query.getDepartment() != null && !query.getDepartment().isEmpty()) {
+            q.addCriteria(Criteria.where("department").is(query.getDepartment()));
+        }
+        if (query.getActive() != null) {
+            q.addCriteria(Criteria.where("active").is(query.getActive()));
+        }
+
+        // 2. Paginación
+        if (query.getPage() != null && query.getSize() != null) {
+            q.with(PageRequest.of(query.getPage(), query.getSize()));
+        }
+
+        // 3. Ordenamiento
+        if (query.getSortBy() != null) {
+            Sort.Direction direction = "DESC".equalsIgnoreCase(query.getSortDirection()) ? Sort.Direction.DESC
+                    : Sort.Direction.ASC;
+            q.with(Sort.by(direction, query.getSortBy()));
+        }
+
+        return mongoTemplate.find(q, User.class);
     }
 
     @Override
     public long countByDepartment(String department) {
-        // TODO: Implementar countByDepartment() - Los estudiantes deben completar este método
-        // PISTAS:
-        // 1. Usar userRepository.countByDepartment(department)
-        // 2. El método ya está definido en UserRepository
-        throw new UnsupportedOperationException("TODO: Implementar countByDepartment() - Los estudiantes deben completar este método");
+        return userRepository.countByDepartment(department);
     }
 }

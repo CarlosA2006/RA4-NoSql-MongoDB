@@ -35,20 +35,22 @@ import java.util.List;
 /**
  * SERVICIO CON API NATIVA DE MONGODB
  * ===================================
- * Este servicio usa el driver nativo de MongoDB (MongoClient, MongoCollection, Document).
+ * Este servicio usa el driver nativo de MongoDB (MongoClient, MongoCollection,
+ * Document).
  * Es equivalente a usar JDBC puro en el mundo SQL (sin frameworks ORM).
  *
  * COMPARACIÓN CON JDBC:
  * =====================
- * API Nativa MongoDB                      | JDBC Puro
- * --------------------------------------- | ---------------------------------------
- * MongoClient mongoClient                 | Connection conn = DriverManager.getConnection()
- * MongoDatabase database                  | conn.setSchema("database_name")
- * MongoCollection<Document> collection    | PreparedStatement stmt
- * Document doc = new Document()           | No directo, usas setString(), setInt()
- * collection.insertOne(doc)               | stmt.executeUpdate("INSERT INTO...")
- * collection.find(Filters.eq(...))        | stmt.executeQuery("SELECT * WHERE...")
- * Document.get("campo")                   | rs.getString("campo")
+ * API Nativa MongoDB | JDBC Puro
+ * --------------------------------------- |
+ * ---------------------------------------
+ * MongoClient mongoClient | Connection conn = DriverManager.getConnection()
+ * MongoDatabase database | conn.setSchema("database_name")
+ * MongoCollection<Document> collection | PreparedStatement stmt
+ * Document doc = new Document() | No directo, usas setString(), setInt()
+ * collection.insertOne(doc) | stmt.executeUpdate("INSERT INTO...")
+ * collection.find(Filters.eq(...)) | stmt.executeQuery("SELECT * WHERE...")
+ * Document.get("campo") | rs.getString("campo")
  *
  * VENTAJAS API NATIVA MONGODB:
  * - Documentos JSON/BSON son más naturales que construir SQL strings
@@ -86,7 +88,7 @@ public class NativeMongoUserServiceImpl implements NativeMongoUserService {
 
     @Autowired
     public NativeMongoUserServiceImpl(MongoClient mongoClient,
-                                      @Value("${spring.data.mongodb.database}") String databaseName) {
+            @Value("${spring.data.mongodb.database}") String databaseName) {
         this.mongoClient = mongoClient;
         this.databaseName = databaseName;
         log.info("NativeMongoUserService inicializado con base de datos: {}", databaseName);
@@ -95,16 +97,19 @@ public class NativeMongoUserServiceImpl implements NativeMongoUserService {
     /**
      * OBTENER COLECCIÓN (EQUIVALENTE A OBTENER TABLE EN JDBC)
      * ========================================================
-     * MongoDB:                                 | JDBC:
-     * ---------------------------------------- | ----------------------------------------
-     * MongoCollection<Document> collection =   | PreparedStatement stmt = conn
-     *   mongoClient.getDatabase("db")          |   .prepareStatement("SELECT * FROM users")
-     *   .getCollection("users")                |
+     * MongoDB: | JDBC:
+     * ---------------------------------------- |
+     * ----------------------------------------
+     * MongoCollection<Document> collection = | PreparedStatement stmt = conn
+     * mongoClient.getDatabase("db") | .prepareStatement("SELECT * FROM users")
+     * .getCollection("users") |
      *
      * DIFERENCIAS CLAVE:
      * - En MongoDB la "colección" es como una tabla, pero sin esquema fijo
-     * - No necesitas CREATE TABLE, la colección se crea automáticamente al insertar el primer documento
-     * - MongoCollection<Document> es typed (Document), en JDBC usas tipos primitivos
+     * - No necesitas CREATE TABLE, la colección se crea automáticamente al insertar
+     * el primer documento
+     * - MongoCollection<Document> es typed (Document), en JDBC usas tipos
+     * primitivos
      */
     private MongoCollection<Document> getCollection() {
         return mongoClient.getDatabase(databaseName).getCollection("users");
@@ -129,9 +134,9 @@ public class NativeMongoUserServiceImpl implements NativeMongoUserService {
      * -----------
      * Connection conn = dataSource.getConnection();
      * Statement stmt = conn.createStatement();
-     * ResultSet rs = stmt.executeQuery("SELECT 1");  // Test de conexión
+     * ResultSet rs = stmt.executeQuery("SELECT 1"); // Test de conexión
      * DatabaseMetaData meta = conn.getMetaData();
-     * ResultSet tables = meta.getTables(null, null, "%", null);  // Listar tablas
+     * ResultSet tables = meta.getTables(null, null, "%", null); // Listar tablas
      * ResultSet countRs = stmt.executeQuery("SELECT COUNT(*) FROM users");
      *
      * OPERACIONES DEMOSTRADAS:
@@ -159,7 +164,8 @@ public class NativeMongoUserServiceImpl implements NativeMongoUserService {
 
             long userCount = getCollection().countDocuments();
 
-            String message = String.format("Conexión API Nativa exitosa | BD: %s | Colecciones: %d | Usuarios: %d | Ping: %s",
+            String message = String.format(
+                    "Conexión API Nativa exitosa | BD: %s | Colecciones: %d | Usuarios: %d | Ping: %s",
                     databaseName, collections.size(), userCount, result.get("ok"));
             log.info(message);
             return message;
@@ -179,16 +185,18 @@ public class NativeMongoUserServiceImpl implements NativeMongoUserService {
      * MongoDB (API Nativa):
      * ---------------------
      * Document doc = new Document()
-     *   .append("name", "Juan")
-     *   .append("email", "juan@email.com")
-     *   .append("department", "IT");
+     * .append("name", "Juan")
+     * .append("email", "juan@email.com")
+     * .append("department", "IT");
      * collection.insertOne(doc);
      * ObjectId id = result.getInsertedId();
      *
      * JDBC Puro:
      * ----------
-     * String sql = "INSERT INTO users(name, email, department, role, active, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)";
-     * PreparedStatement stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
+     * String sql = "INSERT INTO users(name, email, department, role, active,
+     * created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)";
+     * PreparedStatement stmt = conn.prepareStatement(sql,
+     * Statement.RETURN_GENERATED_KEYS);
      * stmt.setString(1, dto.getName());
      * stmt.setString(2, dto.getEmail());
      * stmt.setString(3, dto.getDepartment());
@@ -217,19 +225,20 @@ public class NativeMongoUserServiceImpl implements NativeMongoUserService {
             // 1. Obtener colección (equivalente a preparar el INSERT statement)
             MongoCollection<Document> collection = getCollection();
 
-            // 2. Construir documento BSON (equivalente a setear parámetros en PreparedStatement)
+            // 2. Construir documento BSON (equivalente a setear parámetros en
+            // PreparedStatement)
             Document doc = new Document()
-                    .append("name", dto.getName())           // En JDBC: stmt.setString(1, dto.getName())
-                    .append("email", dto.getEmail())         // En JDBC: stmt.setString(2, dto.getEmail())
+                    .append("name", dto.getName()) // En JDBC: stmt.setString(1, dto.getName())
+                    .append("email", dto.getEmail()) // En JDBC: stmt.setString(2, dto.getEmail())
                     .append("department", dto.getDepartment())
                     .append("role", dto.getRole())
                     .append("active", true)
-                    .append("createdAt", new Date())         // MongoDB usa java.util.Date
-                    .append("updatedAt", new Date());        // En JDBC: stmt.setTimestamp(6, ...)
+                    .append("createdAt", new Date()) // MongoDB usa java.util.Date
+                    .append("updatedAt", new Date()); // En JDBC: stmt.setTimestamp(6, ...)
 
             // 3. Insertar documento (equivalente a executeUpdate())
             InsertOneResult result = collection.insertOne(doc);
-            
+
             // 4. Obtener ID generado (MongoDB genera ObjectId automáticamente)
             ObjectId id = result.getInsertedId().asObjectId().getValue();
             // En JDBC: ResultSet keys = stmt.getGeneratedKeys(); keys.getLong(1);
@@ -268,10 +277,10 @@ public class NativeMongoUserServiceImpl implements NativeMongoUserService {
      * stmt.setLong(1, id);
      * ResultSet rs = stmt.executeQuery();
      * if (rs.next()) {
-     *     User user = new User();
-     *     user.setId(rs.getLong("id"));
-     *     user.setName(rs.getString("name"));
-     *     // ... mapear todos los campos manualmente
+     * User user = new User();
+     * user.setId(rs.getLong("id"));
+     * user.setName(rs.getString("name"));
+     * // ... mapear todos los campos manualmente
      * }
      *
      * CONCEPTOS CLAVE:
@@ -325,11 +334,12 @@ public class NativeMongoUserServiceImpl implements NativeMongoUserService {
      * MongoDB:
      * --------
      * Bson update = Updates.combine(
-     *     Updates.set("name", "Nuevo Nombre"),
-     *     Updates.set("email", "nuevo@email.com"),
-     *     Updates.set("updatedAt", new Date())
+     * Updates.set("name", "Nuevo Nombre"),
+     * Updates.set("email", "nuevo@email.com"),
+     * Updates.set("updatedAt", new Date())
      * );
-     * UpdateResult result = collection.updateOne(Filters.eq("_id", objectId), update);
+     * UpdateResult result = collection.updateOne(Filters.eq("_id", objectId),
+     * update);
      * boolean updated = result.getModifiedCount() > 0;
      *
      * JDBC:
@@ -337,12 +347,12 @@ public class NativeMongoUserServiceImpl implements NativeMongoUserService {
      * StringBuilder sql = new StringBuilder("UPDATE users SET ");
      * List<Object> params = new ArrayList<>();
      * if (dto.getName() != null) {
-     *     sql.append("name = ?, ");
-     *     params.add(dto.getName());
+     * sql.append("name = ?, ");
+     * params.add(dto.getName());
      * }
      * if (dto.getEmail() != null) {
-     *     sql.append("email = ?, ");
-     *     params.add(dto.getEmail());
+     * sql.append("email = ?, ");
+     * params.add(dto.getEmail());
      * }
      * sql.append("updated_at = ? WHERE id = ?");
      * params.add(Timestamp.valueOf(LocalDateTime.now()));
@@ -350,7 +360,7 @@ public class NativeMongoUserServiceImpl implements NativeMongoUserService {
      * 
      * PreparedStatement stmt = conn.prepareStatement(sql.toString());
      * for (int i = 0; i < params.size(); i++) {
-     *     stmt.setObject(i + 1, params.get(i));
+     * stmt.setObject(i + 1, params.get(i));
      * }
      * int rowsAffected = stmt.executeUpdate();
      *
@@ -399,8 +409,8 @@ public class NativeMongoUserServiceImpl implements NativeMongoUserService {
 
             // Ejecutar update
             UpdateResult result = collection.updateOne(
-                    Filters.eq("_id", new ObjectId(id)),  // WHERE id = ?
-                    updateOperation                        // SET campo1 = ?, campo2 = ?
+                    Filters.eq("_id", new ObjectId(id)), // WHERE id = ?
+                    updateOperation // SET campo1 = ?, campo2 = ?
             );
 
             // Verificar que se modificó algo
@@ -416,7 +426,8 @@ public class NativeMongoUserServiceImpl implements NativeMongoUserService {
         } catch (UserNotFoundException | InvalidUserIdException e) {
             throw e;
         } catch (Exception e) {
-            if (e.getMessage() != null && (e.getMessage().contains("duplicate key") || e.getMessage().contains("E11000"))) {
+            if (e.getMessage() != null
+                    && (e.getMessage().contains("duplicate key") || e.getMessage().contains("E11000"))) {
                 log.warn("Intento de actualizar con email duplicado: {}", dto.getEmail());
                 throw new DuplicateEmailException(dto.getEmail());
             }
@@ -434,7 +445,8 @@ public class NativeMongoUserServiceImpl implements NativeMongoUserService {
      * =====================
      * MongoDB:
      * --------
-     * DeleteResult result = collection.deleteOne(Filters.eq("_id", new ObjectId(id)));
+     * DeleteResult result = collection.deleteOne(Filters.eq("_id", new
+     * ObjectId(id)));
      * boolean deleted = result.getDeletedCount() > 0;
      *
      * JDBC:
@@ -457,7 +469,8 @@ public class NativeMongoUserServiceImpl implements NativeMongoUserService {
      *
      * DIFERENCIA CON SQL:
      * - MongoDB no tiene claves foráneas ni CASCADE
-     * - Si tienes "pedidos" relacionados con este usuario, NO se borrarán automáticamente
+     * - Si tienes "pedidos" relacionados con este usuario, NO se borrarán
+     * automáticamente
      * - En SQL con FK + ON DELETE CASCADE, las filas relacionadas se borrarían
      */
     @Override
@@ -488,50 +501,92 @@ public class NativeMongoUserServiceImpl implements NativeMongoUserService {
 
     @Override
     public List<User> findAll() {
-        // TODO: Implementar findAll() - Los estudiantes deben completar este método
-        // PISTAS:
-        // 1. Obtener la colección con getCollection()
-        // 2. Usar collection.find() sin filtros
-        // 3. Iterar con MongoCursor y mapear cada Document a User
-        // 4. Retornar la lista de usuarios
-        throw new UnsupportedOperationException("TODO: Implementar findAll() - Los estudiantes deben completar este método");
+        log.debug("Listando todos los usuarios");
+        MongoCollection<Document> collection = getCollection();
+        List<User> users = new ArrayList<>();
+
+        try (MongoCursor<Document> cursor = collection.find().iterator()) {
+            while (cursor.hasNext()) {
+                users.add(mapDocumentToUser(cursor.next()));
+            }
+        }
+
+        return users;
     }
 
     @Override
     public List<User> findUsersByDepartment(String department) {
-        // TODO: Implementar findUsersByDepartment() - Los estudiantes deben completar este método
-        // PISTAS:
-        // 1. Obtener la colección con getCollection()
-        // 2. Usar Filters.eq("department", department)
-        // 3. Iterar con MongoCursor y mapear cada Document a User
-        // 4. Retornar la lista de usuarios
-        throw new UnsupportedOperationException("TODO: Implementar findUsersByDepartment() - Los estudiantes deben completar este método");
+        log.debug("Buscando usuarios por departamento: {}", department);
+        MongoCollection<Document> collection = getCollection();
+        List<User> users = new ArrayList<>();
+
+        try (MongoCursor<Document> cursor = collection.find(Filters.eq("department", department)).iterator()) {
+            while (cursor.hasNext()) {
+                users.add(mapDocumentToUser(cursor.next()));
+            }
+        }
+
+        return users;
     }
 
     @Override
     public List<User> searchUsers(UserQueryDto query) {
-        // TODO: Implementar searchUsers() - Los estudiantes deben completar este método
-        // PISTAS:
-        // 1. Construir filtros dinámicos con Filters.and()
-        // 2. Usar Filters.regex() para búsqueda parcial por nombre
-        // 3. Aplicar paginación con skip() y limit()
-        // 4. Aplicar ordenamiento con Sorts.ascending() o Sorts.descending()
-        throw new UnsupportedOperationException("TODO: Implementar searchUsers() - Los estudiantes deben completar este método");
+        log.debug("Buscando usuarios con filtros complejos: {}", query);
+        MongoCollection<Document> collection = getCollection();
+        List<User> users = new ArrayList<>();
+        List<Bson> filters = new ArrayList<>();
+
+        // 1. Construir filtros
+        if (query.getName() != null && !query.getName().isEmpty()) {
+            filters.add(Filters.regex("name", query.getName(), "i"));
+        }
+        if (query.getDepartment() != null && !query.getDepartment().isEmpty()) {
+            filters.add(Filters.eq("department", query.getDepartment()));
+        }
+        if (query.getActive() != null) {
+            filters.add(Filters.eq("active", query.getActive()));
+        }
+
+        Bson filter = filters.isEmpty() ? new Document() : Filters.and(filters);
+
+        // 2. Aplicar filtros, sort y paginación
+        FindIterable<Document> findIterable = collection.find(filter);
+
+        // Paginación
+        if (query.getPage() != null && query.getSize() != null) {
+            findIterable.skip(query.getPage() * query.getSize())
+                    .limit(query.getSize());
+        }
+
+        // Ordenamiento
+        if (query.getSortBy() != null) {
+            Bson sort = "DESC".equalsIgnoreCase(query.getSortDirection()) ? Sorts.descending(query.getSortBy())
+                    : Sorts.ascending(query.getSortBy());
+            findIterable.sort(sort);
+        }
+
+        try (MongoCursor<Document> cursor = findIterable.iterator()) {
+            while (cursor.hasNext()) {
+                users.add(mapDocumentToUser(cursor.next()));
+            }
+        }
+
+        return users;
     }
 
     @Override
     public long countByDepartment(String department) {
-        // TODO: Implementar countByDepartment() - Los estudiantes deben completar este método
-        // PISTAS:
-        // 1. Obtener la colección con getCollection()
-        // 2. Usar collection.countDocuments(Filters.eq("department", department))
-        throw new UnsupportedOperationException("TODO: Implementar countByDepartment() - Los estudiantes deben completar este método");
+        log.debug("Contando usuarios por departamento: {}", department);
+        MongoCollection<Document> collection = getCollection();
+        return collection.countDocuments(Filters.eq("department", department));
     }
 
     /**
-     * Ejemplo de Aggregation Pipeline: Obtiene estadísticas de usuarios por departamento.
+     * Ejemplo de Aggregation Pipeline: Obtiene estadísticas de usuarios por
+     * departamento.
      *
-     * Este método demuestra el uso del framework de agregación de MongoDB, que permite:
+     * Este método demuestra el uso del framework de agregación de MongoDB, que
+     * permite:
      * - Agrupar documentos por campo ($group)
      * - Calcular totales ($sum)
      * - Calcular condicionalmente ($cond)
@@ -539,12 +594,12 @@ public class NativeMongoUserServiceImpl implements NativeMongoUserService {
      *
      * Pipeline equivalente en MongoDB Shell:
      * db.users.aggregate([
-     *   { $group: {
-     *       _id: "$department",
-     *       totalUsers: { $sum: 1 },
-     *       activeUsers: { $sum: { $cond: [{ $eq: ["$active", true] }, 1, 0] } }
-     *   }},
-     *   { $sort: { totalUsers: -1 } }
+     * { $group: {
+     * _id: "$department",
+     * totalUsers: { $sum: 1 },
+     * activeUsers: { $sum: { $cond: [{ $eq: ["$active", true] }, 1, 0] } }
+     * }},
+     * { $sort: { totalUsers: -1 } }
      * ])
      */
     @Override
@@ -563,22 +618,18 @@ public class NativeMongoUserServiceImpl implements NativeMongoUserService {
                                     new Document("$cond", List.of(
                                             new Document("$eq", List.of("$active", true)),
                                             1,
-                                            0
-                                    ))
-                            )
-                    ),
+                                            0)))),
                     // Etapa 2: Ordenar por total de usuarios descendente
-                    Aggregates.sort(Sorts.descending("totalUsers"))
-            );
+                    Aggregates.sort(Sorts.descending("totalUsers")));
 
             // Ejecutar el pipeline y mapear resultados
             try (MongoCursor<Document> cursor = collection.aggregate(pipeline).iterator()) {
                 while (cursor.hasNext()) {
                     Document doc = cursor.next();
                     DepartmentStatsDto dto = new DepartmentStatsDto(
-                            doc.getString("_id"),           // department
-                            doc.getInteger("totalUsers"),   // total
-                            doc.getInteger("activeUsers")   // active
+                            doc.getString("_id"), // department
+                            doc.getInteger("totalUsers"), // total
+                            doc.getInteger("activeUsers") // active
                     );
                     stats.add(dto);
                 }

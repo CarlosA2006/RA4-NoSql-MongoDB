@@ -7,10 +7,15 @@ import com.dam.accesodatos.model.UserCreateDto;
 import com.dam.accesodatos.model.UserQueryDto;
 import com.dam.accesodatos.model.UserUpdateDto;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.index.Index;
 
 import java.util.List;
 import java.util.UUID;
@@ -25,6 +30,14 @@ class SpringDataUserServiceTest {
 
     @Autowired
     private SpringDataUserService service;
+
+    @Autowired
+    private MongoTemplate mongoTemplate;
+
+    @BeforeEach
+    void setUp() {
+        mongoTemplate.indexOps(User.class).ensureIndex(new Index().on("email", Sort.Direction.ASC).unique());
+    }
 
     private String uniqueEmail() {
         return "test-" + UUID.randomUUID().toString().substring(0, 8) + "@test.com";
@@ -65,7 +78,6 @@ class SpringDataUserServiceTest {
 
         @Test
         @DisplayName("Debe lanzar DuplicateEmailException con email duplicado")
-        @org.junit.jupiter.api.Disabled("Requiere índice único en MongoDB - funciona en producción pero no en MongoDB embebido sin configuración adicional")
         void createUser_DuplicateEmail_ThrowsException() {
             String duplicateEmail = uniqueEmail();
             UserCreateDto dto1 = new UserCreateDto("User 1", duplicateEmail, "IT", "Dev");
@@ -304,11 +316,9 @@ class SpringDataUserServiceTest {
             List<User> results = service.searchUsers(query);
 
             assertThat(results).isNotNull();
-            assertThat(results).allMatch(user -> 
-                user.getName().contains("Spring IT") && 
-                "IT".equals(user.getDepartment()) && 
-                user.getActive()
-            );
+            assertThat(results).allMatch(user -> user.getName().contains("Spring IT") &&
+                    "IT".equals(user.getDepartment()) &&
+                    user.getActive());
         }
     }
 
